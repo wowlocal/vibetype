@@ -1,0 +1,7 @@
+# vercel
+.vercel
+
+# os / editor
+.DS_Store
+*.log
+node_modules
