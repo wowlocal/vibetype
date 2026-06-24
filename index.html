@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>vibetype — speed drills for people who talk to machines</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #16131F;
+    --bg-2: #110E18;
+    --panel: #1F1B2E;
+    --line: #2E2942;
+    --ink: #E8E3F0;
+    --muted: #8B83A3;
+    --faint: #5A5470;
+    --amber: #F5B33D;
+    --mint: #5FE3A1;
+    --coral: #FF6B6B;
+    --violet: #A78BFA;
+
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: var(--sans);
+    color: var(--ink);
+    background:
+      radial-gradient(1200px 700px at 50% -10%, #241F35 0%, rgba(36,31,53,0) 60%),
+      radial-gradient(900px 600px at 100% 110%, #1A2330 0%, rgba(26,35,48,0) 55%),
+      var(--bg);
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ---------- top bar ---------- */
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1.4rem clamp(1.1rem, 4vw, 3rem);
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: baseline; gap: 0.55rem; }
+  .brand .logo {
+    font-family: var(--mono);
+    color: var(--amber);
+    font-weight: 700;
+    font-size: 1.45rem;
+    animation: blink 1.1s steps(1) infinite;
+  }
+  .brand .name {
+    font-weight: 700;
+    font-size: 1.2rem;
+    letter-spacing: -0.02em;
+  }
+  .brand .tag {
+    color: var(--faint);
+    font-size: 0.78rem;
+    letter-spacing: 0.01em;
+  }
+
+  /* ---------- category chips ---------- */
+  .chips {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .chip {
+    font-family: var(--sans);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.42rem 0.8rem;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+  .chip:hover { color: var(--ink); border-color: var(--faint); }
+  .chip[aria-pressed="true"] {
+    color: var(--bg);
+    background: var(--amber);
+    border-color: var(--amber);
+  }
+
+  /* ---------- stage ---------- */
+  .stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(2rem, 6vh, 5rem) 1.1rem;
+    gap: 1.6rem;
+    position: relative;
+  }
+
+  .eyebrow {
+    font-size: 0.74rem;
+    font-weight: 500;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--violet);
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+  .eyebrow .num {
+    font-family: var(--mono);
+    color: var(--faint);
+  }
+
+  /* the typed phrase — the hero */
+  .field {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: clamp(1.7rem, 6.2vw, 3.6rem);
+    line-height: 1.35;
+    text-align: center;
+    max-width: 22ch;
+    letter-spacing: 0.01em;
+    cursor: text;
+    user-select: none;
+  }
+  .field .ch { color: var(--muted); transition: color 0.06s linear; position: relative; }
+  .field .ch.done { color: var(--ink); }
+  .field .ch.bad { color: var(--coral); }
+  .field .ch.bad.space { background: rgba(255,107,107,0.22); border-radius: 3px; }
+  .field.win .ch.done { color: var(--mint); }
+
+  .caret {
+    display: inline-block;
+    width: 0;
+    border-left: 3px solid var(--amber);
+    margin-left: -1.5px;
+    height: 1.05em;
+    vertical-align: text-bottom;
+    transform: translateY(0.12em);
+    animation: blink 1.05s steps(1) infinite;
+  }
+  .typing .caret { animation: none; }
+
+  .next {
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    color: var(--faint);
+    letter-spacing: 0.02em;
+  }
+  .next b { color: var(--muted); font-weight: 500; }
+
+  /* ---------- HUD ---------- */
+  .hud {
+    display: flex;
+    gap: clamp(1.2rem, 5vw, 3.4rem);
+    align-items: flex-end;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 1.05rem clamp(1.2rem, 4vw, 2.4rem);
+    background: linear-gradient(180deg, rgba(31,27,46,0.5), rgba(31,27,46,0));
+  }
+  .stat { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+  .stat .k {
+    font-size: 0.66rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .stat .v {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: clamp(1.5rem, 4vw, 2.1rem);
+    line-height: 1;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat .v small { font-size: 0.5em; color: var(--faint); font-weight: 500; margin-left: 0.15em; }
+  .stat.wpm .v { color: var(--amber); }
+  .stat.best .v { color: var(--violet); }
+
+  /* ---------- agent ack ---------- */
+  .ack {
+    font-family: var(--mono);
+    font-size: clamp(0.82rem, 2.6vw, 1rem);
+    color: var(--faint);
+    min-height: 1.4em;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    letter-spacing: 0.01em;
+  }
+  .ack .glyph { color: var(--amber); }
+  .ack.clean { color: var(--mint); }
+  .ack.clean .glyph { color: var(--mint); }
+  .ack.messy { color: var(--coral); }
+  .ack.messy .glyph { color: var(--coral); }
+  .ack .agent { color: inherit; }
+
+  /* ---------- footer hint ---------- */
+  .hint {
+    text-align: center;
+    padding: 1rem;
+    color: var(--faint);
+    font-size: 0.76rem;
+    letter-spacing: 0.02em;
+  }
+  .hint kbd {
+    font-family: var(--mono);
+    font-size: 0.78em;
+    color: var(--muted);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    padding: 0.1rem 0.42rem;
+    margin: 0 0.12rem;
+  }
+
+  /* ---------- focus veil ---------- */
+  .veil {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(17,14,24,0.72);
+    backdrop-filter: blur(3px);
+    cursor: pointer;
+    z-index: 5;
+    font-size: 0.95rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+  .veil.show { display: flex; }
+  .veil .pill {
+    border: 1px solid var(--line);
+    background: var(--panel);
+    padding: 0.7rem 1.2rem;
+    border-radius: 999px;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @keyframes blink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, .brand .logo, .caret { animation: none !important; }
+    .field .ch { transition: none; }
+  }
+
+  @media (max-width: 560px) {
+    .brand .tag { display: none; }
+    .hud { width: 100%; justify-content: space-between; }
+  }
+</style>
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">▌</span>
+      <span class="name">vibetype</span>
+      <span class="tag">speed drills for people who talk to machines</span>
+    </div>
+    <nav class="chips" id="chips" aria-label="Phrase categories"></nav>
+  </header>
+
+  <main class="stage">
+    <p class="eyebrow"><span class="num" id="drillNum">drill 01</span> · <span id="drillName">all prompts</span></p>
+
+    <div class="field" id="field" role="textbox" aria-label="Type the phrase shown" tabindex="0"></div>
+
+    <p class="next">next · <b id="nextPhrase">…</b></p>
+
+    <p class="ack" id="ack"><span class="glyph">▸</span><span class="agent">type the phrase to begin a session</span></p>
+
+    <input id="capture" class="sr-only" autocomplete="off" autocapitalize="off"
+           autocorrect="off" spellcheck="false" aria-hidden="true" tabindex="-1" />
+
+    <div class="veil" id="veil"><span class="pill">click to focus · then type</span></div>
+  </main>
+
+  <section class="hud" aria-label="Live stats">
+    <div class="stat wpm"><span class="k">wpm</span><span class="v" id="sWpm">0</span></div>
+    <div class="stat"><span class="k">accuracy</span><span class="v" id="sAcc">100<small>%</small></span></div>
+    <div class="stat"><span class="k">cleared</span><span class="v" id="sDone">0</span></div>
+    <div class="stat best"><span class="k">best wpm</span><span class="v" id="sBest">0</span></div>
+  </section>
+
+  <footer class="hint">
+    <kbd>type</kbd> to play · <kbd>⌫</kbd> fix · <kbd>⇥</kbd> skip phrase · <kbd>esc</kbd> reset session
+  </footer>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---- phrase bank: the actual things you say to a coding agent ----
+  const BANK = {
+    "keep going": [
+      "continue", "keep going", "don't stop", "go on", "next",
+      "keep going until it works",
+    ],
+    "make it work": [
+      "make it work", "just make it work", "fix it", "it's still broken",
+      "same error", "please just work", "why is it still broken",
+    ],
+    "the classics": [
+      "you're absolutely right", "that's not what i asked", "you know what i mean",
+      "no, the other one", "are you sure", "why did you do that",
+      "revert that", "start over",
+    ],
+    "ship it": [
+      "make it prettier", "make it production ready", "clean it up",
+      "make it responsive", "write the tests", "ship it", "lgtm",
+    ],
+    "think harder": [
+      "think harder", "ultrathink", "read the file first", "check it actually works",
+      "don't break anything", "don't delete the database", "explain what you changed",
+    ],
+  };
+
+  const ACK = {
+    clean: [
+      "no mistakes. accepted.", "clean run. committed.", "precisely as instructed.",
+      "zero typos — impressive.", "applied without edits.", "perfect. continuing.",
+    ],
+    minor: [
+      "close enough. accepted.", "applied with $n small fix$s.",
+      "$n minor correction$s, merged anyway.", "good enough. moving on.",
+    ],
+    messy: [
+      "that's not what i asked ($n typos).", "you're absolutely right — $n to fix.",
+      "$n mistakes detected. proceed with caution.", "applied with $n corrections.",
+    ],
+  };
+
+  // ---- state ----
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    field: $("field"), next: $("nextPhrase"), ack: $("ack"),
+    drillNum: $("drillNum"), drillName: $("drillName"),
+    sWpm: $("sWpm"), sAcc: $("sAcc"), sDone: $("sDone"), sBest: $("sBest"),
+    capture: $("capture"), veil: $("veil"), chips: $("chips"),
+  };
+
+  const BEST_KEY = "vibetype.best";
+  let best = +(localStorage.getItem(BEST_KEY) || 0);
+
+  let category = "all";
+  let pool = [];
+  let phrase = "";
+  let nextPhrase = "";
+  let marks = [];          // visible per-char correctness (mutated by backspace)
+  let startTime = 0;       // first keystroke of the session
+  let correctChars = 0;    // gross correct keystrokes this session
+  let totalChars = 0;      // gross keystrokes this session
+  let cleared = 0;         // phrases completed this session
+  let phraseMistakes = 0;  // wrong keystrokes in the current phrase
+  let ticker = null;
+
+  // ---- pool + shuffle bag ----
+  // A "bag" holds a shuffled copy of the pool and is drawn down to empty before
+  // refilling, so every phrase appears once per cycle and none repeats often.
+  let bag = [];
+  let lastDrawn = null;
+
+  function buildPool() {
+    if (category === "all") {
+      pool = Object.entries(BANK).flatMap(([cat, arr]) => arr.map((t) => ({ t, cat })));
+    } else {
+      pool = BANK[category].map((t) => ({ t, cat: category }));
+    }
+    bag = [];
+    lastDrawn = null;
+  }
+
+  function refillBag() {
+    bag = pool.slice();
+    for (let i = bag.length - 1; i > 0; i--) {        // Fisher-Yates shuffle
+      const j = Math.floor(Math.random() * (i + 1));
+      [bag[i], bag[j]] = [bag[j], bag[i]];
+    }
+    // avoid a back-to-back repeat across the bag boundary
+    if (bag.length > 1 && lastDrawn && bag[0].t === lastDrawn.t) {
+      [bag[0], bag[1]] = [bag[1], bag[0]];
+    }
+  }
+
+  function draw() {
+    if (bag.length === 0) refillBag();
+    lastDrawn = bag.shift();
+    return lastDrawn;
+  }
+
+  let curCat = "all";
+  function loadPhrase(first) {
+    const cur = first ? draw() : nextItem;
+    phrase = cur.t;
+    curCat = cur.cat;
+    nextItem = draw();
+    nextPhrase = nextItem.t;
+    marks = [];
+    phraseMistakes = 0;
+    els.field.classList.remove("win");
+    els.drillNum.textContent = "drill " + String(cleared + 1).padStart(2, "0");
+    els.drillName.textContent = curCat;
+    els.next.textContent = nextPhrase;
+    render();
+  }
+  let nextItem = null;
+
+  // ---- rendering ----
+  function render() {
+    const idx = marks.length;
+    let html = "";
+    for (let i = 0; i < phrase.length; i++) {
+      if (i === idx) html += '<span class="caret" aria-hidden="true"></span>';
+      const c = phrase[i];
+      const disp = c === " " ? "&nbsp;" : escapeHtml(c);
+      let cls = "ch";
+      if (i < idx) cls += marks[i] ? " done" : (c === " " ? " bad space" : " bad");
+      html += `<span class="${cls}">${disp}</span>`;
+    }
+    if (idx === phrase.length) html += '<span class="caret" aria-hidden="true"></span>';
+    els.field.innerHTML = html;
+  }
+  function escapeHtml(c) {
+    return c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : c;
+  }
+
+  // ---- typing ----
+  function onChar(ch) {
+    if (!startTime) { startTime = performance.now(); startTicker(); }
+    const idx = marks.length;
+    if (idx >= phrase.length) return;
+    const ok = ch === phrase[idx];
+    marks.push(ok);
+    totalChars++;
+    if (ok) correctChars++;
+    else phraseMistakes++;
+    els.field.classList.add("typing");
+    render();
+    updateStats();
+    if (marks.length === phrase.length) completePhrase();
+  }
+
+  function onBackspace() {
+    if (marks.length === 0) return;
+    marks.pop(); // visual only — keystroke counts stand, so mistakes still cost accuracy
+    render();
+  }
+
+  function completePhrase() {
+    cleared++;
+    const allClean = marks.every(Boolean) && phraseMistakes === 0;
+    if (allClean) els.field.classList.add("win");
+    const wpm = liveWpm();
+    if (wpm > best) { best = wpm; localStorage.setItem(BEST_KEY, best); }
+    setAck(phraseMistakes);
+    updateStats();
+    // brief beat so a clean run flashes mint before the next phrase
+    setTimeout(() => { loadPhrase(false); els.field.classList.remove("typing"); }, allClean ? 360 : 240);
+  }
+
+  function setAck(m) {
+    let tier = m === 0 ? "clean" : m <= 2 ? "minor" : "messy";
+    const list = ACK[tier];
+    let line = list[Math.floor(Math.random() * list.length)];
+    line = line.replace(/\$n/g, m).replace(/\$s/g, m === 1 ? "" : "s");
+    els.ack.className = "ack " + (tier === "minor" ? "" : tier);
+    els.ack.innerHTML = '<span class="glyph">▸</span><span class="agent"></span>';
+    els.ack.querySelector(".agent").textContent = line;
+  }
+
+  // ---- stats ----
+  function liveWpm() {
+    if (!startTime) return 0;
+    const mins = (performance.now() - startTime) / 60000;
+    if (mins <= 0) return 0;
+    return Math.round((correctChars / 5) / mins);
+  }
+  function updateStats() {
+    els.sWpm.textContent = liveWpm();
+    const acc = totalChars ? Math.round((correctChars / totalChars) * 100) : 100;
+    els.sAcc.innerHTML = acc + '<small>%</small>';
+    els.sDone.textContent = cleared;
+    els.sBest.textContent = best;
+  }
+  function startTicker() {
+    stopTicker();
+    ticker = setInterval(() => { els.sWpm.textContent = liveWpm(); }, 250);
+  }
+  function stopTicker() { if (ticker) { clearInterval(ticker); ticker = null; } }
+
+  // ---- session control ----
+  function resetSession() {
+    stopTicker();
+    startTime = 0; correctChars = 0; totalChars = 0; cleared = 0;
+    buildPool();
+    loadPhrase(true);
+    els.field.classList.remove("typing");
+    els.ack.className = "ack";
+    els.ack.innerHTML = '<span class="glyph">▸</span><span class="agent">type the phrase to begin a session</span>';
+    updateStats();
+  }
+
+  function skipPhrase() {
+    loadPhrase(false);
+    els.field.classList.remove("typing");
+  }
+
+  // ---- input wiring ----
+  function handleKey(e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return; // let shortcuts through
+    if (e.key === "Tab") { e.preventDefault(); skipPhrase(); return; }
+    if (e.key === "Escape") { e.preventDefault(); resetSession(); return; }
+    if (e.key === "Backspace") { e.preventDefault(); onBackspace(); return; }
+    if (e.key === "Enter") { e.preventDefault(); return; }
+    if (e.key.length === 1) { e.preventDefault(); onChar(e.key); }
+  }
+  els.capture.addEventListener("keydown", handleKey);
+  // desktop fallback: capture keys even if the hidden input loses focus
+  document.addEventListener("keydown", (e) => {
+    if (document.activeElement !== els.capture) {
+      if (e.key === "Tab") return; // allow normal tabbing when unfocused
+      handleKey(e);
+    }
+  });
+
+  function focusCapture() { els.capture.focus({ preventScroll: true }); }
+  function setVeil(show) { els.veil.classList.toggle("show", show); }
+
+  els.capture.addEventListener("blur", () => setVeil(true));
+  els.capture.addEventListener("focus", () => setVeil(false));
+  document.querySelector(".stage").addEventListener("mousedown", (e) => {
+    if (e.target.closest(".chip")) return;
+    focusCapture();
+  });
+  els.veil.addEventListener("click", focusCapture);
+  els.field.addEventListener("click", focusCapture);
+
+  // ---- chips ----
+  function buildChips() {
+    const cats = ["all", ...Object.keys(BANK)];
+    els.chips.innerHTML = "";
+    cats.forEach((c) => {
+      const b = document.createElement("button");
+      b.className = "chip";
+      b.type = "button";
+      b.textContent = c;
+      b.setAttribute("aria-pressed", String(c === category));
+      b.addEventListener("click", () => {
+        category = c;
+        [...els.chips.children].forEach((ch) =>
+          ch.setAttribute("aria-pressed", String(ch.textContent === c)));
+        resetSession();
+        focusCapture();
+      });
+      els.chips.appendChild(b);
+    });
+  }
+
+  // ---- boot ----
+  buildChips();
+  resetSession();
+  focusCapture();
+  setTimeout(() => { if (document.activeElement !== els.capture) setVeil(true); }, 400);
+})();
+</script>
+</body>
+</html>
